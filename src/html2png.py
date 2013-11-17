@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 
-# This script takes screenshots of html pages, analyzes the structure of the document
+# This script takes screenshots of html pages, analyses the structure of the document
 # and creates an image map of the links.
 #
-# Work based on webkit2png from Paul Hammond.
+# This work based on webkit2png from Paul Hammond.
 #
 
 __version__ = "0.1"
