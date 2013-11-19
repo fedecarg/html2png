@@ -6,14 +6,9 @@
 # This work is based on webkit2png from Paul Hammond.
 #
 
-__version__ = "0.1"
-
-import sys
-import Foundation
-import WebKit
-import AppKit
-import objc
-#import urllib
+import sys, md5, re, time
+import WebKit, AppKit, Foundation
+import objc # bridging between Python and Objective-C
 
 from optparse import OptionParser
 
@@ -38,18 +33,11 @@ class WebkitLoad (Foundation.NSObject, WebKit.protocols.WebFrameLoadDelegate):
        if options.filename:
          filename = options.filename
        elif options.md5:
-         try:
-                import md5
-         except ImportError:
-                print "--md5 requires python md5 library"
-                AppKit.NSApplication.sharedApplication().terminate_(None)
          filename = md5.new(URL).hexdigest()
        else:
-         import re
          filename = re.sub('\W','',URL);
          filename = re.sub('^http','',filename);
        if options.datestamp:
-         import time
          now = time.strftime("%Y%m%d")
          filename = now + "-" + filename
        import os
@@ -102,8 +90,7 @@ class WebkitLoad (Foundation.NSObject, WebKit.protocols.WebFrameLoadDelegate):
                 url = self.urls.pop(0)
         else:
             AppKit.NSApplication.sharedApplication().terminate_(None)
-        #print "<urlcall href=\"\" />", url, "..."
-        #print "<urlcall href=\"%s\" />" % (url)
+        #print "<urlcall href=\"%s\" />" % url
         self.resetWebview(webview)
         webview.mainFrame().loadRequest_(Foundation.NSURLRequest.requestWithURL_(Foundation.NSURL.URLWithString_(url)))
         if not webview.mainFrame().provisionalDataSource():
@@ -141,23 +128,20 @@ class WebkitLoad (Foundation.NSObject, WebKit.protocols.WebFrameLoadDelegate):
             bitmapdata = self.captureView(view)
             self.saveImages(bitmapdata,filename,self.options)
 
-            # ----------------------------------
-
-            #print "url"
-            print "<page>"
-            print frame.dataSource().request().URL().absoluteString()
-            print "</page>"
+            print 'url: ' + frame.dataSource().request().URL().absoluteString()
 
             # Analyse HTML and get links
-            xmloutput = "<map name=\"map\">\r";
+            htmloutput  = '<body>\r'
+            htmloutput += '<img src="%s.png" usemap="#map" />\r' % filename
+            htmloutput += "<map name=\"map\">\r";
 
             domdocument = frame.DOMDocument()
             domnodelist = domdocument.getElementsByTagName_('A')
+
             i = 0
             while  i < domnodelist.length():
                 # linkvalue
-                value = domnodelist.item_(i).valueForKey_('href')
-
+                link = domnodelist.item_(i).valueForKey_('href')
                 # position-rect
                 myrect = domnodelist.item_(i).boundingBox()
 
@@ -166,13 +150,14 @@ class WebkitLoad (Foundation.NSObject, WebKit.protocols.WebFrameLoadDelegate):
                 xmax = Foundation.NSMaxX(myrect)
                 ymax = Foundation.NSMaxY(myrect)
 
-                prefix = ""
-                xmloutput += "<area shape=\"rect\" coords=\"%i,%i,%i,%i\" alt=\"\"><![CDATA[%s%s]]></area>\r" % (xmin, ymin, xmax, ymax, prefix, value)
+                htmloutput += '<area shape="rect" coords="%i,%i,%i,%i" href="%s" alt="" />\r' % (xmin, ymin, xmax, ymax, link)
                 i += 1
 
-            xmloutput += "</map>"
-            f = open(filename +'.xml', 'w+')
-            f.write(xmloutput)
+            htmloutput += '</map>'
+            htmloutput += '</body>\r'
+
+            f = open(filename +'.html', 'w+')
+            f.write(htmloutput)
             f.close()
 
             print " ... done"
@@ -192,7 +177,7 @@ examples:
 %prog -o foo http://google.com/     # save images as "foo-thumb.png" etc
 %prog -                             # screengrab urls from stdin"""
 
-    cmdparser = OptionParser(usage, version=("webkit2png "+__version__))
+    cmdparser = OptionParser(usage)
 
     cmdparser.add_option("-W", "--width",type="float",default=800.0,
        help="initial (and minimum) width of browser (default: 800)")
@@ -275,5 +260,6 @@ examples:
 
     app.run()
 
-if __name__ == '__main__' : main()
+if __name__ == '__main__':
+    main()
 
