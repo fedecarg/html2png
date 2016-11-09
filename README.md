@@ -25,7 +25,7 @@ Just thumbnail and fullsize grab
 python html2png.py -TF http://google.com/
 ```
 
-Save images as "foo-thumb.png" etc
+Save images as "foo-thumb.png"
 ```
 python html2png.py -o foo http://google.com/
 ```
